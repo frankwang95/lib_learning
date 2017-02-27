@@ -49,8 +49,6 @@ def isomap(data, k, p):
 	mean = np.mean(data, axis=0)
 	data = data - mean
 
-	print data
-
 	# computing k-nn shortest path distances
 	knn = np.empty(shape=(data.shape[0], data.shape[0]))
 	for i in range(data.shape[0]):
@@ -62,16 +60,12 @@ def isomap(data, k, p):
 		sort_map = [x for (y, x) in sorted(zip(knn[i,:], range(knn.shape[0])))]
 		for j in sort_map[k + 1:]: knn[i,j] = float('inf')
 
-	print knn
-
 	knn = np.minimum(knn, np.transpose(knn))
-	dist = floyd_warshall(knn)
-
-	print dist
+	dist = floyd_warshall(knn) ** 2
 
 	# MCS algorithim on new distance matrix
 	centering_mat = np.identity(data.shape[0]) - np.ones(dist.shape) / data.shape[0]
-	gram_mat = - np.matmul(np.matmul(centering_mat, dist), centering_mat) / 2
+	gram_mat = - (centering_mat.dot(dist).dot(centering_mat)) / 2
 
 	gram_eig = np.linalg.eig(gram_mat)
 
@@ -100,7 +94,7 @@ def test_isomap(data):
 	g = data[:, 3]==3
 	y = data[:, 3]==4
 	
-	flat = isomap(data[:,:3], 5, 2)
+	flat = isomap(data[:,:3], 10, 2)
 
 	plt.scatter(flat[r,0], flat[r, 1], color='red')
 	plt.scatter(flat[b,0], flat[b, 1], color='blue')
@@ -109,5 +103,5 @@ def test_isomap(data):
 	plt.savefig("isomap.pdf")
 
 
-data = data_import_3D()[:10]
+data = data_import_3D()
 test_isomap(data)
