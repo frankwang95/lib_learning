@@ -7,9 +7,9 @@ from learningC import floyd_warshall
 
 
 
-############# MISC #############
+#################### MISC ####################
 # nondestructively computes the incidence matrix of the k-nearest-neighbors graph
-def compute_knn(dist, k):
+def compute_knn(dist, k, d):
 	knn = np.empty(shape=(dist.shape[0], dist.shape[0]))
 	for i in range(dist.shape[0]):
 		for j in range(i, dist.shape[0]):
@@ -25,7 +25,7 @@ def compute_knn(dist, k):
 
 
 #################### MAIN ####################
-def pca(data, k):
+def pca(data, target_dim):
 	# demean
 	mean = np.mean(data, axis=0)
 	data = data - mean
@@ -40,7 +40,7 @@ def pca(data, k):
 	cv_eig = np.linalg.eig(sample_cv_mat)
 	
 	ord_ind = [y for (x, y) in zip(cv_eig[0], range(len(cv_eig[0])))]
-	drop_list = ord_ind[:k]
+	drop_list = ord_ind[:target_dim]
 
 	eig_bas = cv_eig[1]
 	for i in drop_list: np.delete(eig_bas, i, axis=1)	
@@ -51,12 +51,13 @@ def pca(data, k):
 	return(data)
 
 
-def isomap(data, k, p, d=mk.standard_d):
+def isomap(data, k, target_dim, d=mk.standard_d):
 	# demean
 	mean = np.mean(data, axis=0)
 	data = data - mean
 
-	knn = compute_knn(data, k)
+	# compute shortest path of knn distance matrix
+	knn = compute_knn(data, k, d)
 	floyd_warshall(knn)
 	knn = knn ** 2
 
@@ -67,8 +68,8 @@ def isomap(data, k, p, d=mk.standard_d):
 	gram_eig = np.linalg.eig(gram_mat)
 
 	ord_ind = [x for (y, x) in sorted(zip(gram_eig[0], range(len(gram_eig[0]))))]
-	evec_mat = gram_eig[1][:,ord_ind[-p:]]
-	eval_mat = np.diag(gram_eig[0][ord_ind[-p:]]) ** 0.5
+	evec_mat = gram_eig[1][:,ord_ind[-target_dim:]]
+	eval_mat = np.diag(gram_eig[0][ord_ind[-target_dim:]]) ** 0.5
 	new_data = np.matmul(evec_mat, eval_mat)
 
 	return(new_data)
