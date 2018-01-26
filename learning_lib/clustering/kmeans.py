@@ -5,6 +5,20 @@ import random
 
 class KMeans:
 	def __init__(self, data, n_clusters, initialization='kmeans++'):
+		''' A simple implementation of the K-Means unsupervised clustering algorithm with options for cluster initialization
+			using either the Forgy initialization of KMeans++.
+
+		Inputs
+			data <np.ndarray>: An [n, d] array where n is the number of data points to be clustered and d is the dimension of
+				each datapoint.
+			n_clusters <int>: The number of clusters that KMeans will generate.
+			initialization <str>: A string, either 'kmeans++' or 'forgy', which describes which initialization method to use.
+
+		Attributes
+			data <np.ndarray>: The original data array which was passed in.
+			clusters <list>
+			centroids <list>
+		'''
 		self.data = data
 		self.n_clusters = n_clusters
 		self.n_data = data.shape[0]
@@ -23,7 +37,6 @@ class KMeans:
 			self.n_iterations += 1
 
 
-	##### Initialization Methods #####
 	def choose_initial_centroids(self):
 		if self.initialization == 'forgy': self.forgy()
 		if self.initialization == 'kmeans++': self.kmpp()
@@ -38,7 +51,7 @@ class KMeans:
 	def kmpp(self):
 		index = random.choice(range(self.n_data))
 		self.centroids = [self.data[index, :]]
-	
+
 		while len(self.centroids) < self.n_clusters:
 			prob = []
 			for i in range(self.n_data):
@@ -52,8 +65,6 @@ class KMeans:
 			index = np.random.choice(range(self.n_data), p=prob)
 			self.centroids.append(self.data[index, :])
 
-
-	##### Primary Functions ######
 	def iter_cluster(self):
 		self.last_iteration = self.clusters
 		self.clusters = [[] for _ in range(self.n_clusters)]
