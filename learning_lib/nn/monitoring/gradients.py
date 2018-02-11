@@ -1,3 +1,5 @@
+import tensorflow as tf
+import numpy as np
 import pandas as pd
 from learning_lib.nn.monitoring.base_monitoring import BaseMonitor
 
