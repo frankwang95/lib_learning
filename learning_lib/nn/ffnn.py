@@ -3,7 +3,7 @@ import numpy as np
 
 
 class FFNN(object):
-    def __init__(self, layer_config, post_proc_function=tf.identity, input_vector=None, session=None):
+    def __init__(self, layer_config, post_proc_function=tf.identity, input_vector=None, session=None, float_type=tf.float32):
         """ An implementation of a simple feed-forward neural network using the low-level
             tensorflow API.
 
@@ -46,6 +46,8 @@ class FFNN(object):
         # == Set basic attributes == #
         self.post_proc_function = post_proc_function
         self.learning_curve = []
+        self.loss_gradient = []
+        self.property = []
         self.epochs = 0
 
         # == Define session == #
@@ -56,11 +58,11 @@ class FFNN(object):
 
         # == Define input and output points == #
         if input_vector is None:
-            self.input = tf.placeholder(tf.float32, [None, layer_config[0]])
+            self.input = tf.placeholder(float_type, [None, layer_config[0]])
         else:
             self.input = input_vector
         self.output = self.input
-        self.train_targets = tf.placeholder(tf.float32, [None, layer_config[-1]['n_nodes']])
+        self.train_targets = tf.placeholder(float_type, [None, layer_config[-1]['n_nodes']])
 
         # == Create weights and Biases == #
         self.activation = [lc['activation'] for lc in layer_config[1:]]
@@ -72,16 +74,18 @@ class FFNN(object):
             lc = layer_config[i + 1]
 
             weights = tf.Variable(tf.random_uniform(
-                [n_nodes_prev_layer, lc['n_nodes']],
-                lc['init_weight_lower'],
-                lc['init_weight_upper']
+                shape=[n_nodes_prev_layer, lc['n_nodes']],
+                minval=lc['init_weight_lower'],
+                maxval=lc['init_weight_upper'],
+                dtype=float_type
             ))
             self.weights.append(weights)
 
             bias = tf.Variable(tf.random_uniform(
-                [lc['n_nodes']],
-                lc['init_bias_lower'],
-                lc['init_bias_upper']
+                shape=[lc['n_nodes']],
+                minval=lc['init_bias_lower'],
+                maxval=lc['init_bias_upper'],
+                dtype=float_type
             ))
             self.biases.append(bias)
 
@@ -124,10 +128,21 @@ class FFNN(object):
             out_batch = np.roll(train_out, -batch_size * i, 0)[:batch_size]
             self.session.run(train_step, feed_dict={self.input: in_batch, self.train_targets: out_batch})
 
+            # Writing report information
             if self.epochs % report_interval == 0:
+                self.loss_gradient.append((
+                    self.epochs,
+                    self.session.run(
+                        tf.gradients(loss_val, self.weights + self.biases),
+                        feed_dict={self.input: train_in, self.train_targets: train_out}
+                    )
+                ))
                 self.learning_curve.append((
                     self.epochs,
-                    self.session.run(loss_val, feed_dict={self.input: train_in, self.train_targets: train_out})
+                    self.session.run(
+                        loss_val,
+                        feed_dict={self.input: train_in, self.train_targets: train_out}
+                    )
                 ))
                 print("Reached epoch {}".format(self.epochs))
             self.epochs += 1
