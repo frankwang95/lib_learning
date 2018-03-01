@@ -15,3 +15,18 @@ class LossMonitor(BaseMonitor):
             {'epochs': self.network.epochs, 'loss': loss_val},
             ignore_index=True
         )
+
+    def plot(self):
+        layout = go.Layout(
+            title='Model Loss vs. Epochs',
+            xaxis=dict(title='Epochs'),
+            yaxis=dict(title='Loss')
+        )
+        data = [
+            go.Scatter(
+                x=self.values['epochs'],
+                y=welf.values['loss']
+            )
+        ]
+        fig = go.Figure(data=data, layout=layout)
+        plotly.iplot(fig)
