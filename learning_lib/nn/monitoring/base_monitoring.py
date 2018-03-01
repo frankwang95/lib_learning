@@ -1,5 +1,6 @@
 import abc
 
+
 class BaseMonitor(object):
     def __init__(self, values_init, update_interval):
         self.values = values_init
@@ -12,6 +13,10 @@ class BaseMonitor(object):
 
     @abc.abstractmethod
     def evaluate(self):
+        pass
+
+    @abc.abstractmethod
+    def plot(self):
         pass
 
     def check_update(self):
