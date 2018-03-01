@@ -1,8 +1,12 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-from learning_lib.nn.monitoring.base_monitoring import BaseMonitor
+
 from PIL import Image
+import plotly.offline as plotly
+import plotly.graph_objs as go
+
+from learning_lib.nn.monitoring.base_monitoring import BaseMonitor
 
 
 def visualize_grad(grad_monitor, kind, animated=True, scale_factor):
@@ -81,3 +85,24 @@ class LossGradientNormMonitor(BaseMonitor):
             },
             ignore_index=True
         )
+
+    def plot(self):
+        layout = go.Layout(
+            title='Gradient Norm vs. Epochs',
+            xaxis=dict(title='Epochs'),
+            yaxis=dict(title='Gradient Norm')
+        )
+        data = [
+            go.Scatter(
+                x=self.values['epochs'],
+                y=welf.values['weight_gradient'],
+                name='Weight Gradient Norms'
+            ),
+            go.Scatter(
+                x=self.values['epochs'],
+                y=welf.values['bias_gradient'],
+                name='Bias Gradient Norms'
+            )
+        ]
+        fig = go.Figure(data=data, layout=layout)
+        plotly.iplot(fig)
