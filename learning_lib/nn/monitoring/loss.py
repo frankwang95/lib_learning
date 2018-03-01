@@ -9,9 +9,9 @@ class LossMonitor(BaseMonitor):
     def evaluate(self, train_in, train_out):
         loss_val = self.network.session.run(
             self.network.loss_val,
-            feed_dict={self.input: train_in, self.train_targets: train_out}
+            feed_dict={self.network.input: train_in, self.network.train_targets: train_out}
         )
-        self.values.append(
+        self.values = self.values.append(
             {'epochs': self.network.epochs, 'loss': loss_val},
             ignore_index=True
         )
