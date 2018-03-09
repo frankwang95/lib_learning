@@ -3,9 +3,12 @@ import numpy as np
 
 
 class FFNN(object):
-    def __init__(self, layer_config, post_proc_function=None, loss_func=None, input_vector=None, session=None, float_type=None, monitors=[]):
-        """ An implementation of a simple feed-forward neural network using the low-level
-            tensorflow API.
+    def __init__(
+        self, layer_config, post_proc_function=None, loss_func=None, optimizer=None, input_vector=None,
+        train_targets_vector=None, session=None, float_type=None, monitors=[]
+    ):
+        """ An implementation of a simple feed-forward neural network using the low-level tensorflow API. Provides
+            options for offline mode using `feed_dict` to load data or an online mode using the `tf.train.Dataset` API.
 
         Inputs
             layer_config <list>: A list containing dictionaries which describe the structure of the produced
@@ -25,75 +28,83 @@ class FFNN(object):
             loss_func <function(tf.Tensor, tf.Tensor -> tf.Tensor)>: A function that will compute a loss value from
                 the train inputs after passing through the network and the train outputs. The default is the tensorflow
                 implementation of mean squared loss.
+            optimizer <tf.Optimizer>: A function which performs a optimization step. The default is the tensorflow
+                Graident Descent Optimizer with step size 0.1.
             input_vector <tf.Tensor>: An (None, dim_in) shaped tensor used as the input layer to
-                the network. This can be used to link the network to more complex structures. If
-                not given, a tensorflow placeholder is initialized and used instead.
+                the network. This can be used to link the network to more complex structures or to attach the network
+                to tf.DataSet objects. If not given, a tensorflow placeholder is initialized and used instead.
+            train_targets_vector <tf.Tensor>: A tensor from a tf.DataSet object used to feed in training labels for
+                online training in conjunction with `input_vector`.
             session <tf.Session>: A tensorflow session object. This argument is provided as an
                 option so that to prevent graph ownership issuses when an FFNN is used as a
                 component of a larger network. If not provided, a new interactive session will be
                 initialized.
             float_type <tf.float32, tf.float64>: Gives the numerical type which internal values will be initalized to.
             monitors <list(BaseMonitor)>: Gives a list of monitoring objects which will be tracked during training.
-
-        Attributes
-            lc
-            session
-            epochs
-            monitors
-
-            input
-            train_targets
-            output
-            loss_val
-
-            float_type
-            weights
-            biases
-            activation
-            post_proc_function
         """
 
-        # == Set basic attributes == #
-        self.lc = lc
+        # == Attributes == #
+        self.lc = layer_config
+        self.epochs = 0
+
         if post_proc_function is None:
             self.post_proc_function = tf.identity
         else:
             self.post_proc_function = post_proc_function
-        if self.float_type is None:
+        if float_type is None:
             self.float_type = tf.float32
         else:
             self.float_type = float_type
-        self.monitors = [m.link_to_network(self) for m in monitors]
-        self.epochs = 0
-
-        # == Define session == #
         if session is None:
             self.session = tf.InteractiveSession()
         else:
             self.session = session
+        if loss_func is None:
+            self.loss_func = tf.losses.mean_squared_error
+        else:
+            self.loss_func = loss_func
+        if optimizer is None:
+            self.optimizer = tf.train.GradientDescentOptimizer(0.1)
+        else:
+            self.optimizer = optimizer
 
-        # == Define input and output handles == #
+        # == Architecture == #
+        self.create_params()
+
         if input_vector is None:
-            self.input = tf.placeholder(float_type, [None, layer_config[0]])
+            self.input = tf.placeholder(self.float_type, [None, layer_config[0]])
         else:
             self.input = input_vector
-        self.output = self.input
-        self.train_targets = tf.placeholder(float_type, [None, layer_config[-1]['n_nodes']])
+        self.output = self.feed_forwards(self.input)
 
-        # == Create weights and Biases == #
-        self.activation = [lc['activation'] for lc in layer_config[1:]]
+        if train_targets_vector is None:
+            self.train_targets = tf.placeholder(self.float_type, [None, layer_config[-1]['n_nodes']])
+        else:
+            self.train_targets = train_targets_vector
+        self.loss_val = self.loss_func(self.output, self.train_targets)
+        self.train_step = self.optimizer.minimize(self.loss_val)
+
+        # == Monitors == #
+        self.monitors = [m.link_to_network(self) for m in monitors]
+
+        # == Initialize Variables == #
+        self.session.run(tf.global_variables_initializer())
+
+
+    def create_params(self):
+        self.activation = [lc['activation'] for lc in self.lc[1:]]
         self.weights = []
         self.biases = []
 
-        n_nodes_prev_layer = layer_config[0]
-        for i in range(len(layer_config) - 1):
-            lc = layer_config[i + 1]
+        n_nodes_prev_layer = self.lc[0]
+        for i in range(len(self.lc) - 1):
+            lc = self.lc[i + 1]
 
             weights = tf.Variable(tf.random_uniform(
                 shape=[n_nodes_prev_layer, lc['n_nodes']],
                 minval=lc['init_weight_lower'],
                 maxval=lc['init_weight_upper'],
-                dtype=float_type
+                dtype=self.float_type
             ))
             self.weights.append(weights)
 
@@ -101,61 +112,69 @@ class FFNN(object):
                 shape=[lc['n_nodes']],
                 minval=lc['init_bias_lower'],
                 maxval=lc['init_bias_upper'],
-                dtype=float_type
+                dtype=self.float_type
             ))
             self.biases.append(bias)
 
             n_nodes_prev_layer = lc['n_nodes']
 
-        # == Construct the model calculation in the graph == #
+
+    def feed_forwards(self, input_vector):
         for w, b, a in zip(self.weights, self.biases, self.activation):
-            self.output = a(tf.matmul(self.output, w) + b)
-
-        # == Define handles for accessing loss == #
-        if loss_func is None:
-            self.loss_func = tf.losses.mean_squared_error
-        else:
-            self.loss_func = loss_func
-        self.loss_val = self.loss_func(self.output, self.train_targets)
-
-        # == Initialize variables == #
-        self.session.run(tf.global_variables_initializer())
+            input_vector = a(tf.matmul(input_vector, w) + b)
+        return input_vector
 
 
-    def train(self, train_in, train_out, optimizer=None, batch_size=10, epochs=1):
-        """ Train the network weights with provided data. Trained weights can be accessed inside of
-            the tensorflow session stored as `self.session`.
+    def train_online(self):
+        """ Train the network weights by running the defined train step under the assumption that the neural network
+            input tensor is linked the batching output of a tf.data.DataSet iterator.
+        """
+        while True:
+            try:
+                self.session.run(self.train_step)
+            except tf.errors.OutOfRangeError:
+                break
+
+            # Generate reporting information
+            for m in self.monitors:
+                if m.check_update():
+                    m.evaluate()
+            self.epochs += 1
+
+
+    def train_offline(self, train_in, train_out, batch_size=10, epochs=1):
+        """ Train the network weights with provided numpy array data using `feed_dict` to send the data to the
+            tensorflow runtime.
 
         Inputs
             train_in <np.ndarray>: A [n, d] shaped array where n is the number of datapoints and d is size of the
                 input dimension.
             train_out <np.ndarray>: A [n, c] shaped array where n is the number of datapoints and c is size of the
                 output dimension.
-            optimizer: A function which performs a optimization step. The default is the tensorflow Graident Descent
-                Optimizer with step size 0.1.
             batch_size <int>: The number of data points that will be passed through for each epoch. Default is 10.
             epochs <int>: The number of batches that will be passed through during the train job. Default is 1.
         """
-
-        if optimizer is None: optimizer = tf.train.GradientDescentOptimizer(0.1)
-        train_step = optimizer.minimize(self.loss_val)
-
         for i in range(epochs):
             in_batch = np.roll(train_in, -batch_size * i, 0)[:batch_size]
             out_batch = np.roll(train_out, -batch_size * i, 0)[:batch_size]
-            self.session.run(train_step, feed_dict={self.input: in_batch, self.train_targets: out_batch})
+            self.session.run(
+                self.train_step,
+                feed_dict={self.input: in_batch, self.train_targets: out_batch}
+            )
 
             # Generate reporting information
             for m in self.monitors:
                 if m.check_update():
-                    m.evaluate()
+                    m.evaluate_offline(in_batch, out_batch)
 
-            print("Reached epoch {}".format(self.epochs))
             self.epochs += 1
+            print("\rEpoch: {}".format(self.epochs), end='')
+        print()
 
 
-    def evaluate(self, in_vector):
-        """ Runs the model on a numpy array representing a collection of input data
+    def predict(self, in_vector):
+        """ Runs the model on a numpy array representing a collection of input data using `feed_dict` to send the data
+            to the tensorflow runtime.
 
         Inputs
             in_vector <np.ndarray>: A [n, d] array where n is the number of vectors and d is the size of the
