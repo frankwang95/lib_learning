@@ -16,6 +16,10 @@ class BaseMonitor(object):
         pass
 
     @abc.abstractmethod
+    def evaluate_offline(self, train_in, train_out):
+        pass
+
+    @abc.abstractmethod
     def plot(self):
         pass
 
