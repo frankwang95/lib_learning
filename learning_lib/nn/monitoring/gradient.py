@@ -16,8 +16,8 @@ class LossGradientMonitor(BaseMonitor):
 
     def link_to_network(self, network):
         self.network = network
-        self.weight_shape = network.weights[self.layer].shape.as_list()
-        self.bias_shape = network.biases[self.layer].shape.as_list()
+        self.weight_shape = self.network.weights[self.layer].shape.as_list()
+        self.bias_shape = self.network.biases[self.layer].shape.as_list()
         self.values['weights'] = np.array([]).reshape([0] + self.weight_shape)
         self.values['bias'] = np.array([]).reshape([0] + self.bias_shape)
         self.gradients = tf.gradients(
