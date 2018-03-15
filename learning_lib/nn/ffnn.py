@@ -77,6 +77,7 @@ class FFNN(object):
             self.input = input_vector
         self.output = self.feed_forwards(self.input)
 
+        # == Training == #
         if train_targets_vector is None:
             self.train_targets = tf.placeholder(self.float_type, [None, layer_config[-1]['n_nodes']])
         else:
