@@ -133,13 +133,14 @@ class FFNN(object):
         while True:
             try:
                 self.session.run(self.train_step)
+                
+                # Generate reporting information
+                for m in self.monitors:
+                    if m.check_update():
+                        m.evaluate()
             except tf.errors.OutOfRangeError:
                 break
 
-            # Generate reporting information
-            for m in self.monitors:
-                if m.check_update():
-                    m.evaluate()
             self.epochs += 1
 
 
