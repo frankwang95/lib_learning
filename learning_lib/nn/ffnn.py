@@ -13,11 +13,12 @@ class FFNN(NN):
             - n_nodes <int>: The number of nodes in the layer
             - activation <function(tf.Tensor -> tf.Tensor)>: A function mapping tensors to tensors
                 which will be used as the activation function for the layer.
-            - init_weight_lower <float>: The lower bound of the initialization for the weights.
-            - init_weight_upper <float>: The upper bound of the initialization for the weights.
-            - init_bias_lower <float>: The lower bound of the initialization for the bias terms.
-            - init_bias_upper <float>: The upper bound of the initialization for the bias terms.
+            - init_weight_mean <float>: Weights will be initialized to have this mean.
+            - init_weight_stddev <float>: Weights will be initialized to have this standard deviation.
+            - init_bias_mean <float>: Biases will be initialized to have this mean.
+            - init_bias_stddev <float>: Biases will be initialized to have this standard deviation.
     """
+
     def create_params(self):
         self.activation = [lc['activation'] for lc in self.lc[1:]]
         self.weights = []
@@ -27,18 +28,18 @@ class FFNN(NN):
         for i in range(len(self.lc) - 1):
             lc = self.lc[i + 1]
 
-            weights = tf.Variable(tf.random_uniform(
+            weights = tf.Variable(tf.random_normal(
                 shape=[n_nodes_prev_layer, lc['n_nodes']],
-                minval=lc['init_weight_lower'],
-                maxval=lc['init_weight_upper'],
+                mean=lc['init_weight_mean'],
+                stddev=lc['init_weight_stddev'],
                 dtype=self.float_type
             ))
             self.weights.append(weights)
 
-            bias = tf.Variable(tf.random_uniform(
+            bias = tf.Variable(tf.random_normal(
                 shape=[lc['n_nodes']],
-                minval=lc['init_bias_lower'],
-                maxval=lc['init_bias_upper'],
+                mean=lc['init_bias_mean'],
+                stddev=lc['init_bias_stddev'],
                 dtype=self.float_type
             ))
             self.biases.append(bias)

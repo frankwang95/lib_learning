@@ -5,7 +5,8 @@ import abc
 class NN(object):
     def __init__(
         self, layer_config, post_proc_function=None, loss_func=None, optimizer=None, input_vector=None,
-        train_targets_vector=None, session=None, float_type=None, monitors=[]
+        train_targets_vector=None, session=None, float_type=None, monitors=[], logdir=None, checkpoint_interval=None,
+        summary_interval=None
     ):
         """ An implementation of a neural network framework using the low-level tensorflow API. Provides options for
             offline mode using `feed_dict` to load data or an online mode using the `tf.train.Dataset` API.
@@ -33,9 +34,17 @@ class NN(object):
                 initialized.
             float_type <tf.float32, tf.float64>: Gives the numerical type which internal values will be initalized to.
             monitors <list(BaseMonitor)>: Gives a list of monitoring objects which will be tracked during training.
+            logdir <path>: A string path giving the directory in which you would like tensorflow to save summaries and
+                model checkpoints.
+            checkpoint_interval <int>: The interval in seconds in which checkpoints are saved.
+            summary_interval <int>: The interval in seconds in which summaries are saved.
         """
         self.lc = layer_config
         self.epochs = 0
+        self.logdir = logdir
+        self.checkpoint_interval = checkpoint_interval
+        self.summary_interval = summary_interval
+        self.session = session
 
         if post_proc_function is None:
             self.post_proc_function = tf.identity
@@ -45,10 +54,6 @@ class NN(object):
             self.float_type = tf.float32
         else:
             self.float_type = float_type
-        if session is None:
-            self.session = tf.InteractiveSession()
-        else:
-            self.session = session
         if loss_func is None:
             self.loss_func = tf.losses.mean_squared_error
         else:
@@ -59,36 +64,63 @@ class NN(object):
             self.optimizer = optimizer
 
         # == Architecture == #
-        self.create_params()
-
+        self.monitors = monitors
         if input_vector is None:
-            self.input = tf.placeholder(self.float_type, [None, layer_config[0]])
-        else:
-            self.input = input_vector
-        self.output = self.feed_forwards(self.input)
-
-        # == Training == #
+             input_vector = tf.placeholder(self.float_type)
         if train_targets_vector is None:
-            self.train_targets = tf.placeholder(self.float_type, [None, layer_config[-1]['n_nodes']])
-        else:
-            self.train_targets = train_targets_vector
-        self.loss_val = self.loss_func(self.output, self.train_targets)
-        self.train_step = self.optimizer.minimize(self.loss_val)
+            train_targets_vector = tf.placeholder(self.float_type)
+        self.input = input_vector
+        self.train_targets = train_targets_vector
+        self.output = None
 
-        # == Monitors == #
-        self.monitors = [m.link_to_network(self) for m in monitors]
+        self.create_params()
+        self.rebase(input_vector, train_targets_vector)
+        self.create_summaries()
 
-        # == Initialize Variables == #
-        # TODO: Initialize only the variables initialized in this model
-        self.session.run(tf.global_variables_initializer())
 
     @abc.abstractmethod
     def create_params(self):
         pass
 
+
     @abc.abstractmethod
     def feed_forwards(self, input_vector):
         pass
+
+
+    @abc.abstractmethod
+    def create_summaries(self):
+        pass
+
+
+    def rebase(self, input_vector=None, train_targets_vector=None):
+        """ Takes a tensor to use as input or a tensor to use as a target vector (or both) and reconstructs the network
+            with these tensors as the access points.
+
+            Be aware that irresponsible use of may mismatch input and target pairs for training.
+            # TODO: Seperate handles for training and serving. Use this function only internally.
+
+        Inputs
+            input_vector <tf.Tensor>: An (None, dim_in) shaped tensor used as the input layer to
+                the network. This can be used to link the network to more complex structures or to attach the network
+                to tf.DataSet objects. If not given, a tensorflow placeholder is initialized and used instead.
+            train_targets_vector <tf.Tensor>: A tensor from a tf.DataSet object used to feed in training labels for
+                online training in conjunction with `input_vector`.
+        """
+        # == Input/Output Handles == #
+        if input_vector is not None:
+            self.input = input_vector
+            self.output = self.feed_forwards(self.input)
+
+        # == Training == #
+        if train_targets_vector is not None:
+            self.train_targets = train_targets_vector
+            self.loss_val = self.loss_func(self.output, self.train_targets)
+            self.train_step = self.optimizer.minimize(self.loss_val)
+
+        # == Monitors == #
+        self.monitors = [m.link_to_network(self) for m in self.monitors]
+
 
     def train_online(self):
         """ Train the network weights by running the defined train step under the assumption that the neural network
@@ -106,6 +138,22 @@ class NN(object):
                 break
 
             self.epochs += 1
+
+
+    def init_session(self, managed=False):
+        """ Method to run after TF graph is finalized so that a monitored training session can be started and inserted
+            as the models main session.
+        """
+        if managed:
+            self.session = tf.train.MonitoredTrainingSession(
+                checkpoint_dir = self.logdir,
+                save_checkpoint_secs=self.checkpoint_interval,
+                save_summaries_secs=self.summary_interval
+            )
+        else:
+            self.session = tf.Session()
+            self.session.run(tf.global_variables_initializer())
+
 
     def train_offline(self, train_in, train_out, batch_size=10, epochs=1):
         """ Train the network weights with provided numpy array data using `feed_dict` to send the data to the

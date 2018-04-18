@@ -10,7 +10,7 @@ setup(
 	include_package_data=True,
 	install_requires=[
 		'numpy',
-		'tensorflow',
+		'tensorflow==1.6.0',
 		'plotly'
 	]
 )
