@@ -78,14 +78,23 @@ class NN(object):
         self.create_summaries()
 
 
+
     @abc.abstractmethod
     def create_params(self):
+        ''' Generate the needed
+        '''
         pass
 
 
     @abc.abstractmethod
     def feed_forwards(self, input_vector):
         pass
+
+
+    @abc.abstractmethod
+    def create_train_step(self):
+        self.loss_val = self.loss_func(self.output, self.train_targets)
+        self.train_step = self.optimizer.minimize(self.loss_val)
 
 
     @abc.abstractmethod
@@ -115,8 +124,7 @@ class NN(object):
         # == Training == #
         if train_targets_vector is not None:
             self.train_targets = train_targets_vector
-            self.loss_val = self.loss_func(self.output, self.train_targets)
-            self.train_step = self.optimizer.minimize(self.loss_val)
+            self.create_train_step()
 
         # == Monitors == #
         self.monitors = [m.link_to_network(self) for m in self.monitors]
@@ -143,6 +151,12 @@ class NN(object):
     def init_session(self, managed=False):
         """ Method to run after TF graph is finalized so that a monitored training session can be started and inserted
             as the models main session.
+
+        Inputs
+            managed <bool>: If True, then the initialized session is a tensorflow managed session which uses the
+                logdir, checkpoint_interval, and sumamry_interval attributes of the NN to regularly write tensorflow
+                checkpoints. Otherwise, these attributes are ignored and the session is initialized as a standard
+                tensorflow session which does not lock the computational graph.
         """
         if managed:
             self.session = tf.train.MonitoredTrainingSession(
