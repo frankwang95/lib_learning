@@ -3,18 +3,7 @@ import numpy as np
 from learning_lib.nn.nn_base_class import NN
 
 """
-layer_type == conv:
-    filter_size
-    init_filter_mean
-    init_filter_stddev
-    stride_size
-    ----
-    filter
 
-layer_type == pool:
-    pool_type
-    pool_size
-    stride_size
 }"""
 
 class CNN(NN):
@@ -22,17 +11,60 @@ class CNN(NN):
 
     Inputs
         layer_config <list>: A list containing dictionaries which describe the structure of the produced
-            network.
+            network. Each dictionary should contain the key 'layer_type' which maps to a string value of
+            either 'conv' or 'pool' depending on if you would like the layer to be a convolutional layer
+            or a pooling layer. The remaining parameters depend on which value this key takes:
+
+            layer_type == connected:
+                input_dim
+                output_dim
+                activation
+                init_weight_mean
+                init_weight_stddev
+                init_bias_mean
+                init_bias_stddev
+                ====================
+                weights
+                biases
+
+            layer_type == conv:
+                filter_size
+                init_filter_mean
+                init_filter_stddev
+                stride_size
+                activation
+                ====================
+                filter
+
+            layer_type == pool:
+                pool_type
+                pool_size
+                stride_size
     """
 
     def create_params(self):
         for i in range(len(self.lc)):
             lc = self.lc[i]
+
             if lc['layer_type'] == 'conv':
                 lc['filter'] = tf.Variable(tf.random_normal(
                     shape=lc['filter_size'],
                     mean=lc['init_filter_mean'],
                     stddev=lc['init_filter_stddev'],
+                    dtype=self.float_type
+                ))
+
+            elif lc['layer_type'] == 'connected':
+                lc['weights']  = tf.Variable(tf.random_normal(
+                    shape=[lc['input_dim'], lc['output_dim']],
+                    mean=lc['init_weight_mean'],
+                    stddev=lc['init_weight_stddev'],
+                    dtype=self.float_type
+                ))
+                lc['biases'] = tf.Variable(tf.random_normal(
+                    shape=[lc['output_dim']],
+                    mean=lc['init_bias_mean'],
+                    stddev=lc['init_bias_stddev'],
                     dtype=self.float_type
                 ))
 
@@ -45,8 +77,19 @@ class CNN(NN):
                     input=input_vector,
                     filter=lc['filter'],
                     strides=lc['stride_size'],
-                    padding='SAME'
+                    padding='VALID'
                 )
+                input_vector = lc['activation'](input_vector)
+
+            elif lc['layer_type'] == 'connected':
+                if len(input_vector.shape) != 2:
+                    flattened_dim = int(np.prod(input_vector.shape[1:]))
+                    input_vector = tf.reshape(input_vector, [-1, flattened_dim])
+
+                a = lc['activation']
+                w = lc['weights']
+                b = lc['biases']
+                input_vector = a(tf.matmul(input_vector, w) + b)
 
             elif lc['layer_type'] == 'pool':
                 if lc['pool_type'] == 'average':
