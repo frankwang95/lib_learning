@@ -15,6 +15,9 @@ class CNN(NN):
             either 'conv' or 'pool' depending on if you would like the layer to be a convolutional layer
             or a pooling layer. The remaining parameters depend on which value this key takes:
 
+            layer_type == reshape:
+                new_shape
+
             layer_type == connected:
                 input_dim
                 output_dim
@@ -36,6 +39,16 @@ class CNN(NN):
                 ====================
                 filter
 
+            layer_type == conv_transpose:
+                filter_size
+                init_filter_mean
+                init_filter_stddev
+                stride_size
+                activation
+                output_size -- to be depreciated
+                ====================
+                filter
+
             layer_type == pool:
                 pool_type
                 pool_size
@@ -46,7 +59,7 @@ class CNN(NN):
         for i in range(len(self.lc)):
             lc = self.lc[i]
 
-            if lc['layer_type'] == 'conv':
+            if lc['layer_type'] in ['conv', 'conv_transpose']:
                 lc['filter'] = tf.Variable(tf.random_normal(
                     shape=lc['filter_size'],
                     mean=lc['init_filter_mean'],
@@ -81,11 +94,16 @@ class CNN(NN):
                 )
                 input_vector = lc['activation'](input_vector)
 
-            elif lc['layer_type'] == 'connected':
-                if len(input_vector.shape) != 2:
-                    flattened_dim = int(np.prod(input_vector.shape[1:]))
-                    input_vector = tf.reshape(input_vector, [-1, flattened_dim])
+            elif lc['layer_type'] == 'conv_transpose':
+                input_vector = tf.nn.conv2d_transpose(
+                    value=input_vector,
+                    filter=lc['filter'],
+                    output_shape=lc['output_size'],
+                    strides=lc['stride_size']
+                )
+                input_vector = lc['activation'](input_vector)
 
+            elif lc['layer_type'] == 'connected':
                 a = lc['activation']
                 w = lc['weights']
                 b = lc['biases']
@@ -106,5 +124,8 @@ class CNN(NN):
                         strides=lc['stride_size'],
                         padding='SAME'
                     )
+
+            elif lc['layer_type'] == 'reshape':
+                input_vector = tf.reshape(input_vector, [-1] + lc['new_shape'])
 
         return input_vector
