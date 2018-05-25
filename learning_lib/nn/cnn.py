@@ -99,7 +99,8 @@ class CNN(NN):
                     value=input_vector,
                     filter=lc['filter'],
                     output_shape=lc['output_size'],
-                    strides=lc['stride_size']
+                    strides=lc['stride_size'],
+                    padding='VALID'
                 )
                 input_vector = lc['activation'](input_vector)
 
