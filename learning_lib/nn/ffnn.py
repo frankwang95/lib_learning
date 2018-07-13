@@ -46,7 +46,18 @@ class FFNN(NN):
 
             n_nodes_prev_layer = lc['n_nodes']
 
-    def feed_forwards(self, input_vector):
-        for w, b, a in zip(self.weights, self.biases, self.activation):
+    def feed_forwards(self, input_vector, start_layer=None, end_layer=None):
+        if start_layer is None:
+            start_layer = 0
+        if end_layer is None:
+            end_layer = len(self.lc)
+
+        iterator = zip(
+            self.weights[start_layer:end_layer],
+            self.biases[start_layer:end_layer],
+            self.activation[start_layer:end_layer]
+        )
+
+        for w, b, a in iterator:
             input_vector = a(tf.matmul(input_vector, w) + b)
         return input_vector
