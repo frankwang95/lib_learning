@@ -15,29 +15,18 @@ class CNN(NN):
             either 'conv' or 'pool' depending on if you would like the layer to be a convolutional layer
             or a pooling layer. The remaining parameters depend on which value this key takes:
 
-            layer_type == reshape:
-                new_shape
-
-            layer_type == connected:
-                input_dim
-                output_dim
-                activation
-                init_weight_mean
-                init_weight_stddev
-                init_bias_mean
-                init_bias_stddev
-                ====================
-                weights
-                biases
-
             layer_type == conv:
                 filter_size
                 init_filter_mean
                 init_filter_stddev
+                init_bias_mean
+                init_bias_stddev
                 stride_size
                 activation
-                ====================
+                output_size
+                -------------------------
                 filter
+                biases # Currently only supports untied biases
 
             layer_type == conv_transpose:
                 filter_size
@@ -45,9 +34,10 @@ class CNN(NN):
                 init_filter_stddev
                 stride_size
                 activation
-                output_size -- to be depreciated
-                ====================
+                output_size
+                -------------------------
                 filter
+                biases # Currently only supports untied biases
 
             layer_type == pool:
                 pool_type
@@ -66,23 +56,20 @@ class CNN(NN):
                     stddev=lc['init_filter_stddev'],
                     dtype=self.float_type
                 ))
-
-            elif lc['layer_type'] == 'connected':
-                lc['weights']  = tf.Variable(tf.random_normal(
-                    shape=[lc['input_dim'], lc['output_dim']],
-                    mean=lc['init_weight_mean'],
-                    stddev=lc['init_weight_stddev'],
-                    dtype=self.float_type
-                ))
                 lc['biases'] = tf.Variable(tf.random_normal(
-                    shape=[lc['output_dim']],
+                    shape=lc['output_size'],
                     mean=lc['init_bias_mean'],
                     stddev=lc['init_bias_stddev'],
                     dtype=self.float_type
                 ))
 
-    def feed_forwards(self, input_vector):
-        for i in range(len(self.lc)):
+    def feed_forwards(self, input_vector, start_layer=None, end_layer=None):
+        if start_layer is None:
+            start_layer = 0
+        if end_layer is None:
+            end_layer = len(self.lc)
+
+        for i in range(start_layer, end_layer):
             lc = self.lc[i]
 
             if lc['layer_type'] == 'conv':
@@ -92,7 +79,7 @@ class CNN(NN):
                     strides=lc['stride_size'],
                     padding='VALID'
                 )
-                input_vector = lc['activation'](input_vector)
+                input_vector = lc['activation'](lc['biases'] + input_vector)
 
             elif lc['layer_type'] == 'conv_transpose':
                 input_vector = tf.nn.conv2d_transpose(
@@ -102,7 +89,7 @@ class CNN(NN):
                     strides=lc['stride_size'],
                     padding='VALID'
                 )
-                input_vector = lc['activation'](input_vector)
+                input_vector = lc['activation'](lc['biases'] + input_vector)
 
             elif lc['layer_type'] == 'connected':
                 a = lc['activation']

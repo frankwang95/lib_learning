@@ -41,6 +41,7 @@ class NN(object):
             summary_interval <int>: The interval in seconds in which summaries are saved.
         """
         self.lc = layer_config
+        self.tf_epochs = tf.train.get_or_create_global_step()
         self.epochs = 0
         self.logdir = logdir
         self.checkpoint_interval = checkpoint_interval
@@ -82,20 +83,22 @@ class NN(object):
 
     @abc.abstractmethod
     def create_params(self):
-        ''' Generate the needed
-        '''
+        """ Generate the needed resources ie. weights, biases, convolutional filters etc. needed to compute the model.
+        """
         pass
 
 
     @abc.abstractmethod
-    def feed_forwards(self, input_vector):
+    def feed_forwards(self, input_vector, start_layer=None, end_layer=None):
         pass
 
 
     @abc.abstractmethod
     def create_train_step(self):
+        """ Defines the train step which is run with the neural network's session at each train step.
+        """
         self.loss_val = self.loss_func(self.output, self.train_targets)
-        self.train_step = self.optimizer.minimize(self.loss_val)
+        self.train_step = self.optimizer.minimize(self.loss_val, global_step=self.tf_epochs)
 
 
     @abc.abstractmethod
@@ -131,13 +134,13 @@ class NN(object):
         self.monitors = [m.link_to_network(self) for m in self.monitors]
 
 
-    def train_online(self):
+    def train_online(self, options=None, run_metadata=None):
         """ Train the network weights by running the defined train step under the assumption that the neural network
             input tensor is linked the batching output of a tf.data.DataSet iterator.
         """
         while True:
             try:
-                self.session.run(self.train_step)
+                self.session.run(self.train_step, options=options, run_metadata=run_metadata)
 
                 # Generate reporting information
                 for m in self.monitors:
@@ -149,7 +152,7 @@ class NN(object):
             self.epochs += 1
 
 
-    def init_session(self, managed=False):
+    def init_session(self, managed=False, **kwargs):
         """ Method to run after TF graph is finalized so that a monitored training session can be started and inserted
             as the models main session.
 
@@ -163,14 +166,15 @@ class NN(object):
             self.session = tf.train.MonitoredTrainingSession(
                 checkpoint_dir = self.logdir,
                 save_checkpoint_secs=self.checkpoint_interval,
-                save_summaries_secs=self.summary_interval
+                save_summaries_secs=self.summary_interval,
+                **kwargs
             )
         else:
             self.session = tf.Session()
             self.session.run(tf.global_variables_initializer())
 
 
-    def train_offline(self, train_in, train_out, batch_size=10, epochs=1):
+    def train_offline(self, train_in, train_out, batch_size=10, epochs=1, options=None, run_metadata=None):
         """ Train the network weights with provided numpy array data using `feed_dict` to send the data to the
             tensorflow runtime.
 
@@ -187,7 +191,9 @@ class NN(object):
             out_batch = np.roll(train_out, -batch_size * i, 0)[:batch_size]
             self.session.run(
                 self.train_step,
-                feed_dict={self.input: in_batch, self.train_targets: out_batch}
+                feed_dict={self.input: in_batch, self.train_targets: out_batch},
+                options=options,
+                run_metadata=run_metadata
             )
 
             # Generate reporting information
