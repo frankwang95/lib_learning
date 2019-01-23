@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-	name='learning_lib',
+	name='lib_learning',
 	version='0.0.0',
 	author='Frank Wang',
 	author_email='fkwang@uchicago.edu',
