@@ -4,42 +4,39 @@ import abc
 
 
 class NN(object):
+    """ An implementation of a neural network framework using the low-level tensorflow API. Provides options for
+        offline mode using `feed_dict` to load data or an online mode using the `tf.train.Dataset` API.
+
+    Inputs
+        layer_config <list>: A list containing the network configuration. Exact specifications will vary by the
+            implementation and should be documented there.
+        post_proc_function <function(tf.Tensor -> tf.Tensor)>: A function which is applied to the output layer at
+            compute time but not traintime. One usecase is to apply softmax operations to the output layers in light of
+            the fact that cross-entropy/softmax computations are done in tandem to address numerical overflow.
+        loss_func <function(tf.Tensor, tf.Tensor -> tf.Tensor)>: A function that will compute a loss value from the
+            train inputs after passing through the network and the train outputs. The default is the tensorflow
+            implementation of mean squared loss.
+        optimizer <tf.Optimizer>: A function which performs a optimization step. The default is the tensorflow Graident
+            Descent Optimizer with step size 0.1.
+        input_vector <tf.Tensor>: An (None, dim_in) shaped tensor used as the input layer to the network. This can be
+            used to link the network to more complex structures or to attach the network to tf.DataSet objects. If not
+            given, a tensorflow placeholder is initialized and used instead.
+        train_targets_vector <tf.Tensor>: A tensor from a tf.DataSet object used to feed in training labels for online
+            training in conjunction with `input_vector`.
+        session <tf.Session>: A tensorflow session object. This argument is provided as an option so that to prevent
+            graph ownership issuses when an model is used as a component of a larger network. If not provided, a new
+            session can be initialized using the init_session method.
+        float_type <tf.float32, tf.float64>: Gives the numerical type which internal values will be initalized to.
+        monitors <list(BaseMonitor)>: Gives a list of monitoring objects which will be tracked during training.
+        logdir <path>: A string path giving the directory in which you would like to save summaries and checkpoints.
+        checkpoint_interval <int>: The interval in seconds in which checkpoints are saved.
+        summary_interval <int>: The interval in seconds in which summaries are saved.
+    """
     def __init__(
         self, layer_config, post_proc_function=None, loss_func=None, optimizer=None, input_vector=None,
         train_targets_vector=None, session=None, float_type=None, monitors=[], logdir=None, checkpoint_interval=None,
         summary_interval=None
     ):
-        """ An implementation of a neural network framework using the low-level tensorflow API. Provides options for
-            offline mode using `feed_dict` to load data or an online mode using the `tf.train.Dataset` API.
-
-        Inputs
-            layer_config <list>: A list containing the network configuration. Exact specifications will vary by the
-                implementation and should be documented there.
-            post_proc_function <function(tf.Tensor -> tf.Tensor)>: A function which is applied to the output layer at
-                compute time but not traintime. One usecase is to apply softmax operations to the output layers in
-                light of the fact that cross-entropy/softmax computations are done in tandem to address issues with
-                numerical overflow.
-            loss_func <function(tf.Tensor, tf.Tensor -> tf.Tensor)>: A function that will compute a loss value from
-                the train inputs after passing through the network and the train outputs. The default is the tensorflow
-                implementation of mean squared loss.
-            optimizer <tf.Optimizer>: A function which performs a optimization step. The default is the tensorflow
-                Graident Descent Optimizer with step size 0.1.
-            input_vector <tf.Tensor>: An (None, dim_in) shaped tensor used as the input layer to
-                the network. This can be used to link the network to more complex structures or to attach the network
-                to tf.DataSet objects. If not given, a tensorflow placeholder is initialized and used instead.
-            train_targets_vector <tf.Tensor>: A tensor from a tf.DataSet object used to feed in training labels for
-                online training in conjunction with `input_vector`.
-            session <tf.Session>: A tensorflow session object. This argument is provided as an
-                option so that to prevent graph ownership issuses when an FFNN is used as a
-                component of a larger network. If not provided, a new interactive session will be
-                initialized.
-            float_type <tf.float32, tf.float64>: Gives the numerical type which internal values will be initalized to.
-            monitors <list(BaseMonitor)>: Gives a list of monitoring objects which will be tracked during training.
-            logdir <path>: A string path giving the directory in which you would like tensorflow to save summaries and
-                model checkpoints.
-            checkpoint_interval <int>: The interval in seconds in which checkpoints are saved.
-            summary_interval <int>: The interval in seconds in which summaries are saved.
-        """
         self.lc = layer_config
         self.tf_epochs = tf.train.get_or_create_global_step()
         self.epochs = 0
@@ -80,7 +77,6 @@ class NN(object):
         self.create_summaries()
 
 
-
     @abc.abstractmethod
     def create_params(self):
         """ Generate the needed resources ie. weights, biases, convolutional filters etc. needed to compute the model.
@@ -94,16 +90,15 @@ class NN(object):
 
 
     @abc.abstractmethod
+    def create_summaries(self):
+        pass
+
+
     def create_train_step(self):
         """ Defines the train step which is run with the neural network's session at each train step.
         """
         self.loss_val = self.loss_func(self.output, self.train_targets)
         self.train_step = self.optimizer.minimize(self.loss_val, global_step=self.tf_epochs)
-
-
-    @abc.abstractmethod
-    def create_summaries(self):
-        pass
 
 
     def rebase(self, input_vector=None, train_targets_vector=None):
@@ -161,6 +156,7 @@ class NN(object):
                 logdir, checkpoint_interval, and sumamry_interval attributes of the NN to regularly write tensorflow
                 checkpoints. Otherwise, these attributes are ignored and the session is initialized as a standard
                 tensorflow session which does not lock the computational graph.
+            **kwargs: provided to bbe passed forwards to the session initialization.
         """
         if managed:
             self.session = tf.train.MonitoredTrainingSession(
@@ -170,7 +166,7 @@ class NN(object):
                 **kwargs
             )
         else:
-            self.session = tf.Session()
+            self.session = tf.Session(**kwargs)
             self.session.run(tf.global_variables_initializer())
 
 
@@ -185,6 +181,8 @@ class NN(object):
                 output dimension.
             batch_size <int>: The number of data points that will be passed through for each epoch. Default is 10.
             epochs <int>: The number of batches that will be passed through during the train job. Default is 1.
+            options <?>
+            run_metadata <?>
         """
         for i in range(epochs):
             in_batch = np.roll(train_in, -batch_size * i, 0)[:batch_size]

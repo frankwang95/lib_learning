@@ -5,12 +5,7 @@ setup(
 	name='lib_learning',
 	version='0.0.0',
 	author='Frank Wang',
-	author_email='fkwang@uchicago.edu',
+	author_email='fkwang95@gmail.com',
 	packages=find_packages(),
-	include_package_data=True,
-	install_requires=[
-		'numpy',
-		'tensorflow==1.6.0',
-		'plotly'
-	]
+	include_package_data=True
 )
