@@ -27,18 +27,18 @@ class Worker(object):
     def main_loop(self):
         while True:
             work_block = self.interface.get_work()
-            self.logger.info('got new work block\n{}'.format(yaml.dump(kwargs, default_flow_style=False)))
+            self.logger.info('got new work block\n{}'.format(yaml.dump(work_block, default_flow_style=False)))
 
             try:
-                self.logger.exception('processing work block {} succeeded'.format(work_block['_retrieval_datetime']))
                 self.do_fn(work_block)
                 work_block['_status'] = 'SUCCESS'
+                self.logger.info('processing work block {} succeeded'.format(work_block['_retrieval_datetime']))
 
             except:
+                work_block['_status'] = traceback.format_exc()
                 self.logger.exception('processing work block {} failed with exception\n{}'.format(
                     work_block['_retrieval_datetime'],
                     traceback.format_exc()
                 ))
-                work_block['_status'] = traceback.format_exc()
 
             self.interface.push_confirmation(work_block)

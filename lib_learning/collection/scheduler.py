@@ -8,9 +8,14 @@ class Scheduler(object):
     """ Independent Task Scheduler
     """
     def __init__(
-        self, scheduler_name, interface, block_generator, revert_fn, logger,
+        self, scheduler_name, interface, block_generator, logger, revert_fn=None,
         task_timeout=600, confirm_interval=20
     ):
+        if revert_fn is None:
+            def identity(x):
+                return x
+            revert_fn = identity
+
         self.scheduler_name = scheduler_name
         self.interface = interface
         self.block_generator = block_generator
