@@ -32,7 +32,7 @@ class WorkBlockGenerator(object):
         pass
 
 
-    @abbc.abstractmethod
+    @abc.abstractmethod
     def update(self, block):
         """ In applications where the work block generator needs to make use of information from the workers, this
             can be defined. When a job is found to be completed by the scheduler, this method will be called with the
