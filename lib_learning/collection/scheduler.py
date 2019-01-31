@@ -85,7 +85,6 @@ class Scheduler(object):
 
             if block['_status'] == 'SUCCESS':
                 self.logger.info('block {} computation succeeded'.format(rt))
-                self.block_generator.update(block)
 
             else:
                 self.logger.exception('block {} failed with exception\n{}'.format(rt, block['_status']))
