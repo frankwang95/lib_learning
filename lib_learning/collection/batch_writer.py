@@ -100,5 +100,6 @@ class BatchWriter(object):
             self.sql_parameters['db'],
         ), convert_unicode=True, encoding='utf-8')
         con = engine.connect()
+        self.work_queue.drop_duplicates(subset=self.primary_key, keep='last', inplace=True)
         self.work_queue.to_sql(self.table_name, con=con, if_exists='append', index=False)
         self.reset_work_queue()
