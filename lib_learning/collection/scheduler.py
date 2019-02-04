@@ -1,3 +1,5 @@
+
+
 import time
 import yaml
 import threading
@@ -91,7 +93,8 @@ class Scheduler(object):
                 self.revert_fn(block)
                 self.block_generator.reset(block)
 
-            del self.pending_work[rt]
+            if rt in self.pending_work: # handles case where job timeouts but then later is successful
+                del self.pending_work[rt]
 
 
     def check_timeouts(self):
@@ -99,6 +102,11 @@ class Scheduler(object):
         timeouts = [ts for ts in self.pending_work if ts < failure_cutoff]
         for ts in timeouts:
             self.logger.exception('block {} timed out'.format(ts))
+
             self.revert_fn(self.pending_work[ts])
+            self.logger.exception('reverting database to pre-failure state')
+
             self.block_generator.reset(self.pending_work[ts])
+            self.logger.exception('reverting block generator to pre-failure state'.format(ts))
+
             del self.pending_work[ts]
