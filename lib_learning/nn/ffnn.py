@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from learning_lib.nn.nn_base_class import NN
+from lib_learning.nn.nn_base_class import NN
 
 
 class FFNN(NN):
