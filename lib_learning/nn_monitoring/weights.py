@@ -4,7 +4,7 @@ import numpy as np
 import plotly.offline as plotly
 import plotly.graph_objs as go
 
-from learning_lib.nn_monitoring.base_monitoring import BaseMonitor
+from lib_learning.nn_monitoring.base_monitoring import BaseMonitor
 
 
 class WeightMonitor(BaseMonitor):
