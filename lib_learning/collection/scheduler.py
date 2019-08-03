@@ -11,22 +11,24 @@ class BlockedError(Exception):
 
 
 class Scheduler(object):
-    """ Independent Task Scheduler
+    """ An implementation of an independent Task Scheduler which manages batch processing tasks. Schedulers communicate
+        with workers (.workers.base_worker.Worker) via an interface (.interfaces.base_interface.Interface).
+
+    Inputs:
+        scheduler_name
+        interface
+        blcok_generater
+        logger
+        task_timeout
+        confirm_interval
     """
     def __init__(
-        self, scheduler_name, interface, block_generator, logger, revert_fn=None, blocking=False,
-        task_timeout=600, confirm_interval=20
+        self, scheduler_name, interface, block_generator, logger, task_timeout=600, confirm_interval=20
     ):
-        if revert_fn is None:
-            def identity(x):
-                return x
-            revert_fn = identity
 
         self.scheduler_name = scheduler_name
         self.interface = interface
         self.block_generator = block_generator
-        self.revert_fn = revert_fn
-        self.blocking = blocking
         self.logger = logger
         self.task_timeout = task_timeout
         self.confirm_interval = confirm_interval
@@ -45,17 +47,20 @@ class Scheduler(object):
         self.logger.info('recieved new work request with parameters {}'.format(
             yaml.dump(kwargs, default_flow_style=False)
         ))
-        if self.blocking and len(self.pending_work) > 0:
-            raise BlockedError('previous work block not yet completed in a blocking scheduler')
 
         with self.global_lock:
             retrieval_datetime = time.time()
-            next_block = self.block_generator.get_next(**kwargs)
-            next_block = self.tag_block(next_block, retrieval_datetime)
-            self.pending_work[retrieval_datetime] = next_block
-            self.interface.push_work(next_block)
+            generated_work = self.block_generator.get_next(**kwargs)
 
-        return next_block
+            if not isinstance(generated_work, list):
+                generated_work = [generated_work]
+
+            for block in generated_work:
+                block = self.tag_block(block, retrieval_datetime)
+                self.pending_work[retrieval_datetime] = block
+                self.interface.push_work(block)
+
+        return generated_work
 
 
     def tag_block(self, block, retrieval_time):
@@ -87,11 +92,8 @@ class Scheduler(object):
 
             if block['_status'] == 'SUCCESS':
                 self.logger.info('block {} computation succeeded'.format(rt))
-
             else:
                 self.logger.exception('block {} failed with exception\n{}'.format(rt, block['_status']))
-                self.revert_fn(block)
-                self.block_generator.reset(block)
 
             if rt in self.pending_work: # handles case where job timeouts but then later is successful
                 del self.pending_work[rt]
@@ -102,11 +104,4 @@ class Scheduler(object):
         timeouts = [ts for ts in self.pending_work if ts < failure_cutoff]
         for ts in timeouts:
             self.logger.exception('block {} timed out'.format(ts))
-
-            self.revert_fn(self.pending_work[ts])
-            self.logger.exception('reverting database to pre-failure state')
-
-            self.block_generator.reset(self.pending_work[ts])
-            self.logger.exception('reverting block generator to pre-failure state'.format(ts))
-
             del self.pending_work[ts]
