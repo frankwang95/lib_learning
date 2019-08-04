@@ -1,5 +1,6 @@
 import yaml
 import traceback
+import threading
 
 
 class Worker(object):
@@ -21,7 +22,11 @@ class Worker(object):
         self.do_fn = do_fn
         self.logger = logger
 
-        self.main_loop()
+
+    def start(self):
+        worker_thread = threading.Thread(target=self.main_loop)
+        worker_thread.setDaemon(True)
+        worker_thread.start()
 
 
     def main_loop(self):
