@@ -49,13 +49,13 @@ class Scheduler(object):
         ))
 
         with self.global_lock:
-            retrieval_datetime = time.time()
             generated_work = self.block_generator.get_next(**kwargs)
 
             if not isinstance(generated_work, list):
                 generated_work = [generated_work]
 
             for block in generated_work:
+                retrieval_datetime = time.time()
                 block = self.tag_block(block, retrieval_datetime)
                 self.pending_work[retrieval_datetime] = block
                 self.interface.push_work(block)
