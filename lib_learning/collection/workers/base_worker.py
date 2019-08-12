@@ -24,7 +24,7 @@ class Worker(object):
         self.logger = logger
 
 
-    def start(multiprocessing=False):
+    def start(self, multiprocessing=False):
         if multiprocessing:
             return self.start_process()
         return start_thread()
