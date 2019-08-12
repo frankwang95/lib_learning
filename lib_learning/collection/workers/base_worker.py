@@ -38,7 +38,7 @@ class Worker(object):
 
     def start_process(self):
         worker_process = mp.Process(target=self.main_loop)
-        worker_process.setDaemon(True)
+        worker_process.daemon = True
         worker_process.start()
 
 
