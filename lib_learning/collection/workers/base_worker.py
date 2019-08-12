@@ -1,6 +1,7 @@
 import yaml
 import traceback
 import threading
+import multiprocessing as mp
 
 
 class Worker(object):
@@ -23,10 +24,22 @@ class Worker(object):
         self.logger = logger
 
 
-    def start(self):
+    def start(multiprocessing=False):
+        if multiprocessing:
+            return self.start_process()
+        return start_thread()
+
+
+    def start_thread(self):
         worker_thread = threading.Thread(target=self.main_loop)
         worker_thread.setDaemon(True)
         worker_thread.start()
+
+
+    def start_process(self):
+        worker_process = mp.Process(target=self.main_loop)
+        worker_process.setDaemon(True)
+        worker_process.start()
 
 
     def main_loop(self):
