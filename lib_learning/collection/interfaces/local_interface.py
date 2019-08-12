@@ -1,3 +1,4 @@
+import multiprocessing as mp
 from queue import  Queue
 from lib_learning.collection.interfaces.base_interface import Interface
 
@@ -9,8 +10,11 @@ class LocalInterface(Interface):
         Realistically, this interface should only be run with a single scheduler and worker - distributed work is
         probably not benefitial given the python GIL.
     """
-    def __init__(self):
-        self.work = Queue()
+    def __init__(self, multiprocessing=False):
+        if multiprocessing:
+            self.work = mp.Queue()
+        else:
+            self.work = Queue()
         self.confirmations = {}
 
 
