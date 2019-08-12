@@ -27,7 +27,7 @@ class Worker(object):
     def start(self, multiprocessing=False):
         if multiprocessing:
             return self.start_process()
-        return start_thread()
+        return self.start_thread()
 
 
     def start_thread(self):
