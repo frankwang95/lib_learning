@@ -4,6 +4,10 @@ from sqlalchemy import create_engine
 import threading
 
 
+SQL_RETRIES = 10
+RETRY_DELAY = 5
+
+
 class BatchWriter(object):
     """ Template is a dictionary which maps an attribute name to a column in the target SQL DB.
     """
@@ -69,6 +73,7 @@ class BatchWriter(object):
         return result_set[0][4]
 
 
+    @retry(Exception, tries=SQL_RETRIES, delay=RETRY_DELAY)
     def clear_existing_entries(self):
         if self.work_queue.shape[0] == 1:
             query = 'DELETE FROM {} WHERE {}="{}";'.format(
@@ -92,6 +97,7 @@ class BatchWriter(object):
         db.close()
 
 
+    @retry(Exception, tries=SQL_RETRIES, delay=RETRY_DELAY)
     def write_new_entries(self):
         engine = create_engine("mysql://{}:{}@{}/{}?charset=utf8mb4".format(
             self.sql_parameters['user'],
@@ -100,7 +106,7 @@ class BatchWriter(object):
             self.sql_parameters['db'],
         ), convert_unicode=True, encoding='utf-8')
         con = engine.connect()
-        
+
         self.work_queue.drop_duplicates(subset=self.primary_key, keep='last', inplace=True)
         self.work_queue.to_sql(self.table_name, con=con, if_exists='append', index=False)
         self.reset_work_queue()
