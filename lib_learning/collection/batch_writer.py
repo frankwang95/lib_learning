@@ -2,6 +2,7 @@ import pandas as pd
 import MySQLdb as sql
 from sqlalchemy import create_engine
 import threading
+from retry import retry
 
 
 SQL_RETRIES = 10
