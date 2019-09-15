@@ -100,10 +100,11 @@ class BatchWriter(object):
 
     @retry(Exception, tries=SQL_RETRIES, delay=RETRY_DELAY)
     def write_new_entries(self):
-        engine = create_engine("mysql://{}:{}@{}/{}?charset=utf8mb4".format(
+        engine = create_engine("mysql://{}:{}@{}:{}/{}?charset=utf8mb4".format(
             self.sql_parameters['user'],
             self.sql_parameters['passwd'],
             self.sql_parameters['host'],
+            self.sql_parameters['port'],
             self.sql_parameters['db'],
         ), convert_unicode=True, encoding='utf-8')
         con = engine.connect()
