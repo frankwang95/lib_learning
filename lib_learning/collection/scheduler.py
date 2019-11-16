@@ -17,19 +17,21 @@ class Scheduler(object):
     Inputs:
         scheduler_name
         interface
-        blcok_generater
+        block_generators
         logger
         task_timeout
         confirm_interval
     """
     def __init__(
-        self, scheduler_name, interface, block_generator, logger, task_timeout=600, confirm_interval=20
+        self, scheduler_name, interface, block_generator, logger, task_timeout=600, confirm_interval=20,
+        tries=1, default_retry_delay=60
     ):
-
         self.scheduler_name = scheduler_name
         self.interface = interface
         self.block_generator = block_generator
         self.logger = logger
+        self.tries = tries
+        self.default_retry_delay = defaul_retry_delay
         self.task_timeout = task_timeout
         self.confirm_interval = confirm_interval
 
@@ -67,9 +69,15 @@ class Scheduler(object):
         assert '_retrieval_datetime' not in block
         assert '_scheduler_name' not in block
         assert '_status' not in block
+        asssert '_finish_datetime' not in block
         block['_retrieval_datetime'] = retrieval_time
         block['_scheduler_name'] = self.scheduler_name
         block['_status'] = 'PENDING'
+        block['finish_datetime'] = None
+        if '_tries' not in block:
+            block['_tries'] = self.tries
+        if '_retry_delay' not in block:
+            block['_retry_delay'] = self.default_retry_delay
         return block
 
 
@@ -92,8 +100,15 @@ class Scheduler(object):
 
             if block['_status'] == 'SUCCESS':
                 self.logger.info('block {} computation succeeded'.format(rt))
+            elif block['_tries'] > 1:
+                if time.time() - block['_finish_datetime'] > block['_retry_delay']:
+                    block['_status'] = 'PENDING'
+                    block['_finish_datetime'] = None
+                    block['_tries'] -= 1
+                    self.interface.push_work(block)
+                    self.logger.warning('block {} failed with {} tries remaining'.format(rt, block['_tries']))
             else:
-                self.logger.exception('block {} failed with exception\n{}'.format(rt, block['_status']))
+                self.logger.exception('block {} failed permanantly with exception\n{}'.format(rt, block['_status']))
 
             if rt in self.pending_work: # handles case where job timeouts but then later is successful
                 del self.pending_work[rt]

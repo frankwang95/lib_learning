@@ -1,3 +1,4 @@
+import time
 import yaml
 import traceback
 import threading
@@ -50,10 +51,12 @@ class Worker(object):
             try:
                 self.do_fn(work_block)
                 work_block['_status'] = 'SUCCESS'
+                work_block['_finish_datetime'] = time.time()
                 self.logger.info('processing work block {} succeeded'.format(work_block['_retrieval_datetime']))
 
             except:
                 work_block['_status'] = traceback.format_exc()
+                work_block['_finish_datetime'] = time.time()
                 self.logger.exception('processing work block {} failed with exception\n{}'.format(
                     work_block['_retrieval_datetime'],
                     traceback.format_exc()
