@@ -17,7 +17,6 @@ class LocalInterface(Interface):
     def push_work(self, block):
         if block['_scheduler_name'] not in self.confirmations:
             self.confirmations[block['_scheduler_name']] = []
-
         self.work.put(block)
 
 
@@ -34,5 +33,4 @@ class LocalInterface(Interface):
             confirmations = self.confirmations[scheduler_name]
             self.confirmations[scheduler_name] = []
             return confirmations
-
         return []
