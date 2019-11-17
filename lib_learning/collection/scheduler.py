@@ -69,7 +69,7 @@ class Scheduler(object):
         assert '_retrieval_datetime' not in block
         assert '_scheduler_name' not in block
         assert '_status' not in block
-        asssert '_finish_datetime' not in block
+        assert '_finish_datetime' not in block
         block['_retrieval_datetime'] = retrieval_time
         block['_scheduler_name'] = self.scheduler_name
         block['_status'] = 'PENDING'
