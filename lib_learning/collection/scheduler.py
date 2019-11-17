@@ -31,7 +31,7 @@ class Scheduler(object):
         self.block_generator = block_generator
         self.logger = logger
         self.tries = tries
-        self.default_retry_delay = defaul_retry_delay
+        self.default_retry_delay = default_retry_delay
         self.task_timeout = task_timeout
         self.confirm_interval = confirm_interval
 
