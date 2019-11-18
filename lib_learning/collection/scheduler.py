@@ -44,7 +44,7 @@ class Scheduler(object):
         # maps retrieval_time to iter reconstruction params
         self.pending_work = {}
         # store of failed blocks for potential retry
-        self.failed_blocks = []
+        self.failed_blocks = {}
 
         thread = threading.Thread(target=self.pending_work_checker)
         thread.setDaemon(True)
@@ -99,21 +99,20 @@ class Scheduler(object):
 
 
     def process_failures(self):
-        for block in self.failed_blocks:
-            old_rt = block['_retrieval_datetime']
+        print("Moredebug1")
+        while old_rt, block in self.failed_blocks.items():
             if block['_tries'] <= 1:
-                print("Here1?")
                 self.logger.exception('block {} failed permanantly'.format(old_rt))
-                continue
+                del self.failed_blocks[old_rt]
             elif time.time() - block['_finish_datetime'] > block['_retry_delay']:
-                print("Here?")
                 new_rt = time.time()
-                block = tag_block(block, new_rt)
+                block = self.tag_block(block, new_rt)
                 block['_tries'] -= 1
                 self.interface.push_work(block)
                 self.logger.warning('retrying block {} under ts {} with {} tries remaining'.format(
                     old_rt, new_rt, block['_tries']
                 ))
+                del self.failed_blocks[old_rt]
 
 
     def check_confirmations(self):
@@ -126,7 +125,7 @@ class Scheduler(object):
             if block['_status'] == 'SUCCESS':
                 self.logger.info('block {} computation succeeded'.format(rt))
             else:
-                self.failed_blocks.append(block)
+                self.failed_blocks[rt] = block
                 self.logger.exception('block {} failed with exception\n{}'.format(rt, block['_status']))
 
             if rt in self.pending_work:
@@ -138,5 +137,5 @@ class Scheduler(object):
         timeouts = [ts for ts in self.pending_work if ts < failure_cutoff]
         for ts in timeouts:
             self.logger.exception('block {} timed out'.format(ts))
-            self.failed_blocks.append(self.pending_work[ts])
+            self.failed_blocks[ts] = self.pending_work[ts]
             del self.pending_work[ts]
