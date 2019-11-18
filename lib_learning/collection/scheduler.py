@@ -102,9 +102,11 @@ class Scheduler(object):
         for block in self.failed_blocks:
             old_rt = block['_retrieval_datetime']
             if block['_tries'] <= 1:
+                print("Here1?")
                 self.logger.exception('block {} failed permanantly'.format(old_rt))
                 continue
             elif time.time() - block['_finish_datetime'] > block['_retry_delay']:
+                print("Here?")
                 new_rt = time.time()
                 block = tag_block(block, new_rt)
                 block['_tries'] -= 1
