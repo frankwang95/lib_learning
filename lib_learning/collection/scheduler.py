@@ -100,7 +100,7 @@ class Scheduler(object):
 
     def process_failures(self):
         print("Moredebug1")
-        while old_rt, block in self.failed_blocks.items():
+        for old_rt, block in self.failed_blocks.items():
             if block['_tries'] <= 1:
                 self.logger.exception('block {} failed permanantly'.format(old_rt))
                 del self.failed_blocks[old_rt]
