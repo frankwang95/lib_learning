@@ -99,11 +99,11 @@ class Scheduler(object):
 
 
     def process_failures(self):
-        print("Moredebug1")
+        deletions = []
         for old_rt, block in self.failed_blocks.items():
             if block['_tries'] <= 1:
                 self.logger.exception('block {} failed permanantly'.format(old_rt))
-                del self.failed_blocks[old_rt]
+                deletions.append(old_rt)
             elif time.time() - block['_finish_datetime'] > block['_retry_delay']:
                 new_rt = time.time()
                 block = self.tag_block(block, new_rt)
@@ -112,7 +112,9 @@ class Scheduler(object):
                 self.logger.warning('retrying block {} under ts {} with {} tries remaining'.format(
                     old_rt, new_rt, block['_tries']
                 ))
-                del self.failed_blocks[old_rt]
+                deletions.append(old_rt)
+        for rt in deletions:
+            del self.failed_blocks[rt]
 
 
     def check_confirmations(self):
