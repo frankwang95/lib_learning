@@ -128,7 +128,7 @@ class Scheduler(object):
                 self.logger.info('block {} computation succeeded'.format(rt))
             else:
                 self.failed_blocks[rt] = block
-                self.logger.exception('block {} failed with exception\n{}'.format(rt, block['_status']))
+                self.logger.exception('block {} failed with exception{}'.format(rt, block['_status']))
 
             if rt in self.pending_work:
                 del self.pending_work[rt]
