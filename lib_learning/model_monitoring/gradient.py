@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.offline as plotly
 import plotly.graph_objs as go
 
-from lib_learning.nn_monitoring.base_monitoring import BaseMonitor
+from lib_learning.model_monitoring.base_monitoring import BaseMonitor
 
 
 class LossGradientMonitor(BaseMonitor):
