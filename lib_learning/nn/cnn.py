@@ -62,6 +62,19 @@ class CNN(NN):
                     stddev=lc['init_bias_stddev'],
                     dtype=self.float_type
                 ))
+            elif lc['layer_type'] == 'connected':
+                lc['filter'] = tf.Variable(tf.random_normal(
+                    shape=[lc['input_dim'], lc['output_size']],
+                    mean=lc['init_weight_mean'],
+                    stddev=lc['init_weight_stddev'],
+                    dtype=self.float_type
+                ))
+                lc['biases'] = tf.Variable(tf.random_normal(
+                    shape=[lc['output_size']],
+                    mean=lc['init_bias_mean'],
+                    stddev=lc['init_bias_stddev'],
+                    dtype=self.float_type
+                ))
 
     def feed_forwards(self, input_vector, start_layer=None, end_layer=None):
         if start_layer is None:
@@ -93,7 +106,7 @@ class CNN(NN):
 
             elif lc['layer_type'] == 'connected':
                 a = lc['activation']
-                w = lc['weights']
+                w = lc['filter']
                 b = lc['biases']
                 input_vector = a(tf.matmul(input_vector, w) + b)
 
