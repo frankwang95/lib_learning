@@ -98,7 +98,7 @@ class CNN(NN):
                 input_vector = tf.nn.conv2d_transpose(
                     value=input_vector,
                     filter=lc['filter'],
-                    output_shape=lc['output_size'],
+                    output_shape=[self.input.shape[0]]+lc['output_size'],
                     strides=lc['stride_size'],
                     padding='VALID'
                 )
